@@ -23,7 +23,7 @@ fn main() {
         let number_of_spaces: usize = string_array.len() - shifted_strings[i].len();
         let shifted_string_to_vec: Vec<char> = shifted_strings[i].chars().collect();
 
-        let mut string_vector_to_compare: Vec <char> = Vec::new();
+        let mut string_vector_to_compare: Vec<char> = Vec::new();
 
         for _j in 0..number_of_spaces {
             string_vector_to_compare.push(' ');
