@@ -96,6 +96,8 @@ fn scan_networks() {
                             println!("{:<30} {:<10} {:<20}", "SSID", "Segnale", "Sicurezza");
                             println!("{:-<60}", "");
                             for network in networks {
+                                // Note: nmcli restituisce il segnale come numero (0-100)
+                                // In un'implementazione robusta, si dovrebbe validare che sia numerico
                                 println!("{:<30} {:<10}% {:<20}", 
                                     network.ssid, 
                                     network.signal,
@@ -144,6 +146,12 @@ fn connect_to_network() {
     println!("\nTentativo di connessione a '{}'...", ssid);
     println!("Approccio: NetworkManager (nmcli)\n");
 
+    // NOTA DI SICUREZZA: Passare la password come argomento CLI è insicuro!
+    // Alternative più sicure per applicazioni reali:
+    // 1. Usare D-Bus API di NetworkManager per passare credenziali in modo sicuro
+    // 2. Leggere da file di configurazione con permessi restrittivi
+    // 3. Usare il keyring del sistema (es. libsecret)
+    // Questa è solo una demo educativa!
     let output = if password.is_empty() {
         Command::new("nmcli")
             .args(&["device", "wifi", "connect", ssid])
