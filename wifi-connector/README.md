@@ -47,24 +47,34 @@ cargo run --bin wifi-wpa-supplicant
 sudo cargo run --bin wifi-wpa-supplicant
 ```
 
-### 3. D-Bus API - `wifi-dbus` ✨ NUOVO
+### 3. D-Bus API - `wifi-dbus` ✅ IMPLEMENTAZIONE COMPLETA
 
-Implementazione dimostrativa usando D-Bus per comunicare con wpa_supplicant.
+Implementazione completamente funzionante usando D-Bus per comunicare con wpa_supplicant.
 
 **Caratteristiche:**
 - Type-safe e robusto
 - Nessun parsing di output testuale
 - Comunicazione diretta via D-Bus
-- Esempio educativo (non completamente funzionale)
+- Asincrono con Tokio
+- Completamente funzionale
+
+**Requisiti:**
+- wpa_supplicant in esecuzione con supporto D-Bus
+- D-Bus system bus accessibile
+- Permessi per accedere a fi.w1.wpa_supplicant1
 
 **Esecuzione:**
 ```bash
-cargo run --bin wifi-dbus
+# Compilazione con feature dbus
+cargo build --features dbus
+
+# Esecuzione
+cargo run --bin wifi-dbus --features dbus
 ```
 
-**Nota:** Questa è un'implementazione dimostrativa che mostra la struttura e i concetti dell'uso di D-Bus. Per un'implementazione completa, sarebbe necessario aggiungere le dipendenze `zbus` e `tokio`.
+**Note:** Richiede che wpa_supplicant sia avviato e configurato per esporre l'interfaccia D-Bus.
 
-### 4. Unix Socket - `wifi-socket` ✨ NUOVO
+### 4. Unix Socket - `wifi-socket`
 
 Implementazione usando Unix socket per comunicare direttamente con il control socket di wpa_supplicant.
 
@@ -252,13 +262,13 @@ Command::new("wpa_supplicant")
 Command::new("dhclient").arg(interface).output()
 ```
 
-### 3. D-Bus API ✅ IMPLEMENTATO (Demo)
+### 3. D-Bus API ✅ IMPLEMENTATO (Completo)
 
 **File:** `src/dbus_impl.rs` | **Binary:** `wifi-dbus`
 
-Comunicazione type-safe con wpa_supplicant tramite D-Bus.
+Comunicazione type-safe con wpa_supplicant tramite D-Bus - **implementazione completamente funzionante**.
 
-**Implementazione (concettuale con zbus):**
+**Implementazione (con zbus 4.0):**
 ```rust
 use zbus::{Connection, proxy};
 
@@ -267,14 +277,30 @@ use zbus::{Connection, proxy};
     default_service = "fi.w1.wpa_supplicant1"
 )]
 trait WpaInterface {
-    fn scan(&self) -> zbus::Result<()>;
-    fn scan_results(&self) -> zbus::Result<Vec<OwnedObjectPath>>;
+    fn scan(&self, args: HashMap<&str, Value>) -> zbus::Result<()>;
+    #[zbus(property)]
+    fn bsss(&self) -> zbus::Result<Vec<OwnedObjectPath>>;
+    fn add_network(&self, args: HashMap<&str, Value>) -> zbus::Result<OwnedObjectPath>;
+    fn select_network(&self, path: ObjectPath) -> zbus::Result<()>;
 }
 
-// Uso
+// Uso async
 let connection = Connection::system().await?;
 let proxy = WpaInterfaceProxy::new(&connection).await?;
-proxy.scan().await?;
+proxy.scan(HashMap::new()).await?;
+```
+
+**Dipendenze:**
+```toml
+zbus = "4.0"
+tokio = { version = "1.35", features = ["full"] }
+futures = "0.3"
+```
+
+**Compilazione:**
+```bash
+cargo build --features dbus
+cargo run --bin wifi-dbus --features dbus
 ```
 
 **Vantaggi:**
@@ -283,13 +309,19 @@ proxy.scan().await?;
 - Notifiche asincrone via segnali
 - API ben definita e documentata
 - Performance migliori
+- **Completamente funzionale e pronto per uso reale**
 
 **Svantaggi:**
 - Richiede async runtime (Tokio)
 - Curva di apprendimento più ripida
 - Dipendenze aggiuntive (zbus)
 
-**Note:** L'implementazione attuale è dimostrativa/educativa. Per uso reale, aggiungere dipendenze zbus e tokio.
+**Funzionalità implementate:**
+- ✅ Scansione reti WiFi con parsing completo
+- ✅ Connessione a reti (aperte e con password)
+- ✅ Disconnessione
+- ✅ Stato della connessione in tempo reale
+- ✅ Gestione automatica interfacce
 
 ### 4. Unix Socket ✅ IMPLEMENTATO
 
