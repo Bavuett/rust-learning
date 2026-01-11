@@ -1,0 +1,37 @@
+[package]
+name = "wifi-connector"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# Dependencies for D-Bus implementation
+zbus = { version = "4.0", optional = true }
+tokio = { version = "1.35", features = ["full"], optional = true }
+futures = { version = "0.3", optional = true }
+
+[features]
+default = []
+dbus = ["dep:zbus", "dep:tokio", "dep:futures"]
+
+# Binary per l'implementazione NetworkManager
+[[bin]]
+name = "wifi-connector"
+path = "src/main.rs"
+
+# Binary per l'implementazione wpa_supplicant (CLI commands)
+[[bin]]
+name = "wifi-wpa-supplicant"
+path = "src/wpa_supplicant.rs"
+
+# Binary per l'implementazione D-Bus
+[[bin]]
+name = "wifi-dbus"
+path = "src/dbus_impl.rs"
+required-features = ["dbus"]
+
+# Binary per l'implementazione Unix Socket
+[[bin]]
+name = "wifi-socket"
+path = "src/socket_impl.rs"
