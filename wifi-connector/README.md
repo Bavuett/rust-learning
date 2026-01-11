@@ -23,9 +23,9 @@ cargo run --bin wifi-connector
 cargo run
 ```
 
-### 2. wpa_supplicant - `wifi-wpa-supplicant` ✨ NUOVO
+### 2. wpa_supplicant CLI - `wifi-wpa-supplicant`
 
-Implementazione a basso livello usando wpa_supplicant direttamente.
+Implementazione a basso livello usando comandi CLI di wpa_supplicant.
 
 **Requisiti:**
 - wpasupplicant
@@ -47,6 +47,42 @@ cargo run --bin wifi-wpa-supplicant
 sudo cargo run --bin wifi-wpa-supplicant
 ```
 
+### 3. D-Bus API - `wifi-dbus` ✨ NUOVO
+
+Implementazione dimostrativa usando D-Bus per comunicare con wpa_supplicant.
+
+**Caratteristiche:**
+- Type-safe e robusto
+- Nessun parsing di output testuale
+- Comunicazione diretta via D-Bus
+- Esempio educativo (non completamente funzionale)
+
+**Esecuzione:**
+```bash
+cargo run --bin wifi-dbus
+```
+
+**Nota:** Questa è un'implementazione dimostrativa che mostra la struttura e i concetti dell'uso di D-Bus. Per un'implementazione completa, sarebbe necessario aggiungere le dipendenze `zbus` e `tokio`.
+
+### 4. Unix Socket - `wifi-socket` ✨ NUOVO
+
+Implementazione usando Unix socket per comunicare direttamente con il control socket di wpa_supplicant.
+
+**Caratteristiche:**
+- Comunicazione diretta via socket Unix
+- Comandi testuali interattivi
+- Nessuna dipendenza esterna (solo std)
+- Esempio funzionante
+
+**Requisiti:**
+- wpa_supplicant in esecuzione con ctrl_interface configurato
+- Permessi di accesso al socket
+
+**Esecuzione:**
+```bash
+cargo run --bin wifi-socket
+```
+
 ## Funzionalità
 
 ### Implementazione NetworkManager
@@ -57,7 +93,7 @@ sudo cargo run --bin wifi-wpa-supplicant
 - 📊 Stato della connessione
 - 📚 Informazioni dettagliate sugli approcci implementativi
 
-### Implementazione wpa_supplicant
+### Implementazione wpa_supplicant CLI
 - 🔍 Scansione reti WiFi (usando iw scan)
 - 📝 Generazione configurazione wpa_supplicant
 - 🔗 Connessione usando wpa_supplicant
@@ -66,18 +102,32 @@ sudo cargo run --bin wifi-wpa-supplicant
 - 📊 Stato wpa_supplicant e interfaccia
 - 📚 Documentazione dettagliata del workflow
 
+### Implementazione D-Bus
+- 📚 Esempi di codice per comunicazione D-Bus
+- 📋 Spiegazione delle interfacce D-Bus di wpa_supplicant
+- 🔧 Documentazione dell'architettura D-Bus
+- 💡 Vantaggi e considerazioni
+
+### Implementazione Unix Socket
+- 🔌 Connessione al control socket di wpa_supplicant
+- 📝 Esecuzione comandi testuali (PING, SCAN, STATUS, etc.)
+- 📊 Esempi di tutti i comandi principali
+- 📚 Documentazione completa del protocollo
+
 ## Installazione
 
 ```bash
 # Clona o naviga nella directory del progetto
 cd wifi-connector
 
-# Compila entrambe le implementazioni
+# Compila tutte le implementazioni
 cargo build --release
 
 # Esegui l'implementazione desiderata
 cargo run --bin wifi-connector          # NetworkManager
-cargo run --bin wifi-wpa-supplicant     # wpa_supplicant
+cargo run --bin wifi-wpa-supplicant     # wpa_supplicant CLI
+cargo run --bin wifi-dbus               # D-Bus (demo)
+cargo run --bin wifi-socket             # Unix Socket
 ```
 
 ## Utilizzo
@@ -202,7 +252,85 @@ Command::new("wpa_supplicant")
 Command::new("dhclient").arg(interface).output()
 ```
 
-### 3. IWD (iNet Wireless Daemon) 📝 TEORICO
+### 3. D-Bus API ✅ IMPLEMENTATO (Demo)
+
+**File:** `src/dbus_impl.rs` | **Binary:** `wifi-dbus`
+
+Comunicazione type-safe con wpa_supplicant tramite D-Bus.
+
+**Implementazione (concettuale con zbus):**
+```rust
+use zbus::{Connection, proxy};
+
+#[proxy(
+    interface = "fi.w1.wpa_supplicant1.Interface",
+    default_service = "fi.w1.wpa_supplicant1"
+)]
+trait WpaInterface {
+    fn scan(&self) -> zbus::Result<()>;
+    fn scan_results(&self) -> zbus::Result<Vec<OwnedObjectPath>>;
+}
+
+// Uso
+let connection = Connection::system().await?;
+let proxy = WpaInterfaceProxy::new(&connection).await?;
+proxy.scan().await?;
+```
+
+**Vantaggi:**
+- Type-safe: errori a compile-time
+- Nessun parsing di stringhe
+- Notifiche asincrone via segnali
+- API ben definita e documentata
+- Performance migliori
+
+**Svantaggi:**
+- Richiede async runtime (Tokio)
+- Curva di apprendimento più ripida
+- Dipendenze aggiuntive (zbus)
+
+**Note:** L'implementazione attuale è dimostrativa/educativa. Per uso reale, aggiungere dipendenze zbus e tokio.
+
+### 4. Unix Socket ✅ IMPLEMENTATO
+
+**File:** `src/socket_impl.rs` | **Binary:** `wifi-socket`
+
+Comunicazione diretta con il control socket di wpa_supplicant.
+
+**Implementazione:**
+```rust
+use std::os::unix::net::UnixStream;
+
+let socket = "/var/run/wpa_supplicant/wlan0";
+let mut stream = UnixStream::connect(socket)?;
+
+// Invia comando
+stream.write_all(b"SCAN\n")?;
+
+// Leggi risposta
+let mut buf = String::new();
+reader.read_line(&mut buf)?;  // "OK"
+```
+
+**Vantaggi:**
+- Semplice da implementare
+- Nessuna dipendenza esterna (solo std)
+- Comunicazione diretta e veloce
+- Non richiede async runtime
+
+**Svantaggi:**
+- Parsing manuale delle risposte
+- Meno robusto di D-Bus
+- API non type-safe
+- Richiede wpa_supplicant con ctrl_interface
+
+**Comandi supportati:**
+- PING, SCAN, SCAN_RESULTS
+- STATUS, LIST_NETWORKS
+- ADD_NETWORK, SELECT_NETWORK
+- DISCONNECT, SAVE_CONFIG
+
+### 5. IWD (iNet Wireless Daemon) 📝 TEORICO
 
 Alternativa moderna a wpa_supplicant.
 
@@ -219,32 +347,33 @@ iwctl station wlan0 connect "SSID"
 - Meno diffuso
 - Meno documentazione
 
-### 4. Librerie Rust Native 📝 TEORICO
+### 6. Librerie Netlink 📝 TEORICO
 
-Utilizzo di crate Rust per accesso diretto.
+Utilizzo di crate Rust per accesso diretto al kernel.
 
 **Crate potenziali:**
-- `network-manager` - Bindings per D-Bus API di NetworkManager
+- `neli` - Comunicazione Netlink diretta con kernel
 - `libc` - Accesso a basso livello (socket, ioctl)
-- `neli` - Comunicazione Netlink
 
 **Vantaggi:**
-- Type-safe
-- Nessuna dipendenza da comandi esterni
-- Migliore error handling
+- Massimo controllo
+- Nessun daemon esterno
 
 **Svantaggi:**
-- Implementazione complessa
-- Richiede conoscenze a basso livello
+- Molto complesso
+- Richiede gestione protocollo 802.11
 
 ## Struttura del Codice
 
 ```
 wifi-connector/
-├── Cargo.toml          # Configurazione del progetto
-├── README.md           # Questa documentazione
+├── Cargo.toml              # Configurazione del progetto
+├── README.md               # Questa documentazione
 └── src/
-    └── main.rs         # Codice principale con menu e funzionalità
+    ├── main.rs             # NetworkManager (nmcli)
+    ├── wpa_supplicant.rs   # wpa_supplicant CLI
+    ├── dbus_impl.rs        # D-Bus API (demo)
+    └── socket_impl.rs      # Unix Socket
 ```
 
 ### Strutture Dati Principali
@@ -254,6 +383,8 @@ wifi-connector/
 enum WifiApproach {
     NetworkManager,
     WpaSupplicant,
+    DBus,
+    UnixSocket,
     IwdCtl,
 }
 
